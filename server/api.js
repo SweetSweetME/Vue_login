@@ -2,6 +2,17 @@ const models = require('./db');
 const express = require('express');
 const router = express.Router(); //这里用到了express的路由级中间件
 
+const bcrypt = require('bcrypt')
+const multer = require('multer')
+const path = require('path')
+const fs = require('fs')
+const { jwtSign, jwtCheck } = require('./jwt')
+
+
+
+// 指定文件上传路径
+var upload = multer({dest: path.join(__dirname, './../public/upload/tmp')}); 
+
 // 注册账户的接口
 // /api为代理的服务
 router.post('/api/user/register',(req, res) => {
@@ -16,9 +27,10 @@ router.post('/api/user/register',(req, res) => {
       if(data.length > 0){
         res.send({'status': 1001, 'message': '该用户名已经注册！'});
       }else{
+        const hashPwd = bcrypt.hashSync(req.body.password, 10) // 使用bcrypt.hashSync方法生成密文密码
         let newName = new models.login({
           name:req.body.name,
-          password: req.body.password
+          password: hashPwd
         });
         //newName.save 往数据库中插入数据
         newName.save((err, data) => {
@@ -34,16 +46,36 @@ router.post('/api/user/register',(req, res) => {
 });
 //登录接口
 router.post('/api/user/login', (req, res) => {
-  models.login.find({name: req.body.name, password: req.body.password},(err, data)=>{
-    if(err){
-      res.send({'status': 1002, 'message': '查询数据库失败！', 'data': err});
-    }else{
-      console.log(data);
-      if(data.length>0){
-        res.send({'status': 1000, 'message': '登录成功！', 'data': data});
-      }else{
-        res.send({'status': 1001, 'message': '登录失败，该用户没有注册！', 'data': err});
+  
+    models.login.find({name: req.body.name},(err, data)=>{
+      console.log('嘿嘿', data)
+      const isPwdValid = bcrypt.compareSync(req.body.password, data[0].password) // 使用bcrypt.compareSync方法验证密码
+      if (isPwdValid) {
+        if(err){
+          res.send({'status': 1002, 'message': '登录失败', 'data': err});
+        }else{
+          const token = jwtSign({_id: data[0]._id}) // 用引入的jwtSign方法生成token并返回
+          if(data.length>0){
+            res.send({'status': 1000, 'message': '登录成功！', 'data': { token: token, _id: data[0]._id }});
+          } else {
+            res.send({'status': 1001, 'message': '登录失败，该用户没有注册！', 'data': err});
+          }
+        }
+      } else {
+        res.send({'status': 1003, 'message': '参数错误', 'data': []});
       }
+    });
+  
+    
+});
+//获取用户信息
+router.post('/api/user_info', jwtCheck, (req,res)=>{
+  //通过模型去查找数据库
+  models.login.find({_id: req.body._id}, {name: 1}, (err,data)=>{
+    if(err){
+      res.send(err);
+    }else{
+      res.send({'status': 200, 'message': '获取信息成功', 'data': data});
     }
   });
 });
@@ -69,4 +101,110 @@ router.post('/api/user/delete', (req, res) => {
     }
   });
 });
+
+//BMI 增加接口
+router.post('/api/bmi/add_item',  (req, res) => {
+    models.login.find({_id: req.body.user_id}, (err,data)=>{
+      if (err) {
+        res.send({'status': 1012, 'message': '用户信息不存在', 'data': err});
+      } else {
+        let newBmi = new models.bmi_list({
+          height: req.body.height,
+          weight: req.body.weight,
+          bmi_value: req.body.bmi_value,
+          cal_time: req.body.cal_time,
+          user_id: req.body.user_id
+        });
+        //newBmi.save 往数据库中插入数据
+        newBmi.save((err, data) => {
+          if(err){
+            res.send({'status': 1002, 'message': '添加失败！', 'data': err});
+          }else{
+            res.send({'status': 1000, 'message': '添加成功！'});
+          }
+        });
+      }
+  });
+});
+
+//BMI 获取列表接口
+router.post('/api/bmi/get_items', jwtCheck,  (req, res) => {
+  models.bmi_list.find({user_id: req.body.user_id}, (err, data)=>{
+    if (err) {
+      res.send({'status': 1012, 'message': 'BMI信息不存在', 'data': err});
+    } else {
+      res.send({'status': 1012, 'message': '查询成功', 'data': data});
+    }
+  });
+});
+
+//删除BMI接口
+router.post('/api/bmi/delete', (req, res) => {
+  //通过模型去查找数据库
+  models.bmi_list.remove({_id: req.body._id}, (err, data) => {
+    if(err){
+      res.send({'status': 1003, 'message': '删除失败！', 'data': err});
+    }else{
+      res.send({'status': 1000, 'message': '删除成功！', 'data': data});
+    }
+  });
+});
+
+//获取command列表数据
+router.get('/api/command_list', (req,res)=>{
+
+  //通过模型去查找数据库
+  models.command_list.find((err,data)=>{
+    if(err){
+      res.send(err);
+    }else{
+      res.send({code: '200', status: 'success', data: data});
+    }
+  });
+  
+});
+
+// 上传图片接口
+router.post('/api/base/singleFile', upload.single('file'), function (req, res, next) {
+  if(req.body.fileLocation) {
+    const newName = req.file.path.replace(/\/tmp/, '\/' + req.body.fileLocation) + path.parse(req.file.originalname).ext
+    
+    fs.rename(req.file.path, newName, err => {
+      if (err) {
+        res.send({ message: err.message })
+      } else {
+        let fileName = newName.split('\/').pop()
+        res.send({ path: `${req.body.fileLocation}/${fileName}` })
+      }
+    })
+  } else {
+    res.send({ message: '未指定文件路径' })
+  }
+}) 
+
+// 新增推荐列表接口
+router.post('/api/command/add_item', function (req, res, next) {
+  models.login.find({_id: req.body.user_id}, (err,data)=>{
+    if (err) {
+      res.send({'status': 1012, 'message': '用户信息不存在', 'data': err});
+    } else {
+      console.log(data)
+      let newCommand = new models.command_list({
+        user_id: req.body.user_id,
+        title: data[0].name,
+        img: 'http://localhost:8080/upload/' + req.body.img,
+        description: req.body.description,
+        content: req.body.content
+      });
+      //newBmi.save 往数据库中插入数据
+      newCommand.save((err, data) => {
+        if(err){
+          res.send({'status': 1002, 'message': '添加失败！', 'data': err});
+        }else{
+          res.send({'status': 1000, 'message': '添加成功！', data: data});
+        }
+      });
+    }
+});
+}) 
 module.exports = router;

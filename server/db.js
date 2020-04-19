@@ -18,10 +18,28 @@ const loginSchema = mongoose.Schema({
   password:String
 });
 
+const commandListSchema = mongoose.Schema({
+  user_id: String,
+  img: String,
+  title: String,
+  description: String,
+  content: String
+});
+
+const BMIListSchema = mongoose.Schema({
+  height: String,
+  weight: String,
+  bmi_value: String,
+  cal_time: String,
+  user_id: String
+});
+
 //2.Model 通过Schema构造而成
 //建立users表
 const Models = {
-  login : mongoose.model('users', loginSchema)
+  login : mongoose.model('users', loginSchema),
+  command_list: mongoose.model('command_list', commandListSchema),
+  bmi_list: mongoose.model('bmi_list', BMIListSchema),
 };
 
 module.exports = Models;
