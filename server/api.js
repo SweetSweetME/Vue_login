@@ -7,7 +7,7 @@ const multer = require('multer')
 const path = require('path')
 const fs = require('fs')
 const { jwtSign, jwtCheck } = require('./jwt')
-
+var ObjectId = require('mongodb').ObjectID;
 
 
 // 指定文件上传路径
@@ -49,6 +49,10 @@ router.post('/api/user/login', (req, res) => {
   
     models.login.find({name: req.body.name},(err, data)=>{
       console.log('嘿嘿', data)
+      if(data.length <= 0){
+        res.send({'status': 1004, 'message': '用户未注册', 'data': []});
+      }
+      console.log(req.body.password ,data[0] )
       const isPwdValid = bcrypt.compareSync(req.body.password, data[0].password) // 使用bcrypt.compareSync方法验证密码
       if (isPwdValid) {
         if(err){
@@ -62,7 +66,7 @@ router.post('/api/user/login', (req, res) => {
           }
         }
       } else {
-        res.send({'status': 1003, 'message': '参数错误', 'data': []});
+        res.send({'status': 1003, 'message': '密码错误！', 'data': []});
       }
     });
   
@@ -71,7 +75,7 @@ router.post('/api/user/login', (req, res) => {
 //获取用户信息
 router.post('/api/user_info', jwtCheck, (req,res)=>{
   //通过模型去查找数据库
-  models.login.find({_id: req.body._id}, {name: 1}, (err,data)=>{
+  models.login.find({_id: req.body._id}, {name: 1, like_command: 1, not_like_command: 1}, (err,data)=>{
     if(err){
       res.send(err);
     }else{
@@ -194,7 +198,8 @@ router.post('/api/command/add_item', function (req, res, next) {
         title: data[0].name,
         img: 'http://localhost:8080/upload/' + req.body.img,
         description: req.body.description,
-        content: req.body.content
+        content: req.body.content,
+        creat_time: req.body.creat_time
       });
       //newBmi.save 往数据库中插入数据
       newCommand.save((err, data) => {
@@ -207,4 +212,110 @@ router.post('/api/command/add_item', function (req, res, next) {
     }
 });
 }) 
+
+//获取command换一换的数据列表
+router.get('/api/life_command', (req,res)=>{
+
+  //通过模型去查找数据库
+  models.life_command.find((err,data)=>{
+    if(err){
+      res.send(err);
+    }else{
+      res.send({code: '200', status: 'success', data: data});
+    }
+  });
+  
+});
+
+
+//添加喜欢
+router.post('/api/life_command/like', jwtCheck, (req,res)=>{
+  let life_command = [];
+
+  //通过模型去查找数据库
+  models.login.find({_id: req.body.user_id}, (err,data)=>{
+    if (err) {
+      res.send({'status': 1004, 'message': '添加喜欢失败', 'data': err});
+    } else {
+      life_command = data[0].like_command || '';
+      name = data[0].name;
+      models.login.updateOne({name: name}, { $set: {"like_command": life_command + ',' + req.body.life_command_id || ''}}, (err,data)=>{
+      if (err) {
+        res.send({'status': 1003, 'message': '添加喜欢失败', 'data': err});
+      } else {
+          res.send({'status': 1000, 'message': '添加喜欢成功', data:data});
+      }
+      });
+    }
+  });
+});
+
+//取消喜欢
+router.post('/api/life_command/cancle_like', jwtCheck, (req,res)=>{
+  let life_command = [];
+
+  //通过模型去查找数据库
+  models.login.find({_id: req.body.user_id}, (err,data)=>{
+    if (err) {
+      res.send({'status': 1004, 'message': '取消喜欢失败', 'data': err});
+    } else {
+      life_command = data[0].like_command || '';
+      const tempArr = life_command.split(',').filter(item => item !== req.body.life_command_id);
+      const tempStr = tempArr.join(',')
+      name = data[0].name;
+      models.login.updateOne({name: name}, { $set: {"like_command": tempStr}}, (err,data)=>{
+      if (err) {
+        res.send({'status': 1003, 'message': '取消喜欢失败', 'data': err});
+      } else {
+          res.send({'status': 1000, 'message': '取消喜欢成功', data:data});
+      }
+      });
+    }
+  });
+});
+
+//获取我的喜欢的command列表数据
+router.get('/api/like_command_list', (req,res)=>{
+
+  //通过模型去查找数据库
+  models.command_list.find({user_id: req.query.user_id}, (err,data)=>{
+    if(err){
+      res.send(err);
+    }else{
+      res.send({code: '200', status: 'success', data: data});
+    }
+  });
+  
+});
+
+//获取我的喜欢的command列表数据
+router.post('/api/delete/my_command', (req,res)=>{
+
+  //通过模型去查找数据库
+  models.command_list.remove({_id: req.body._id}, (err, data) => {
+    if(err){
+      res.send(err);
+    }else{
+      res.send({'status': 1003, 'message': '删除成功！', 'data': data});
+    }
+  });
+  
+});
+
+// //获取收藏列表
+// router.post('/api/delete/my_command', (req,res)=>{
+
+//   //通过模型去查找数据库
+//   models.life_command.find({_id: req.body._id}, (err, data) => {
+//     if(err){
+//       res.send(err);
+//     }else{
+//       res.send({'status': 1003, 'message': '删除成功！', 'data': data});
+//     }
+//   });
+  
+// });
+
+
+
 module.exports = router;

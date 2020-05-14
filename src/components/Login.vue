@@ -16,7 +16,7 @@
       <p>用户id：{{nameId}}</p>
     </div>
     <div v-show="showAll">
-      <p v-for="item in array">{{item.name}}的ID：{{item._id}}<button @click=deleteone(item.name)>删除该账号</button></p>
+      <p v-for="item in array" v-bind:key="item">{{item.name}}的ID：{{item._id}}<button @click=deleteone(item.name)>删除该账号</button></p>
     </div>
   </div>
 </template>

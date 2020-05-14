@@ -15,7 +15,10 @@ db.on('open',()=>{
 //1.Schema 数据库集合的模型骨架，或者是数据属性模型传统意义的结构
 const loginSchema = mongoose.Schema({
   name: String,
-  password:String
+  password:String,
+  img_url: String,
+  like_command: String,
+  not_like_command: String,
 });
 
 const commandListSchema = mongoose.Schema({
@@ -23,7 +26,8 @@ const commandListSchema = mongoose.Schema({
   img: String,
   title: String,
   description: String,
-  content: String
+  content: String,
+  creat_time: String
 });
 
 const BMIListSchema = mongoose.Schema({
@@ -34,12 +38,17 @@ const BMIListSchema = mongoose.Schema({
   user_id: String
 });
 
+const LifeCommandSchema = mongoose.Schema({
+  content: String
+});
+
 //2.Model 通过Schema构造而成
 //建立users表
 const Models = {
   login : mongoose.model('users', loginSchema),
   command_list: mongoose.model('command_list', commandListSchema),
   bmi_list: mongoose.model('bmi_list', BMIListSchema),
+  life_command: mongoose.model('life_command', LifeCommandSchema),
 };
 
 module.exports = Models;
