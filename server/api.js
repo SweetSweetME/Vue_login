@@ -75,7 +75,7 @@ router.post('/api/user/login', (req, res) => {
 //获取用户信息
 router.post('/api/user_info', jwtCheck, (req,res)=>{
   //通过模型去查找数据库
-  models.login.find({_id: req.body._id}, {name: 1, like_command: 1, not_like_command: 1}, (err,data)=>{
+  models.login.find({_id: req.body._id}, {name: 1, like_command: 1, not_like_command: 1, like_command_list: 1}, (err,data)=>{
     if(err){
       res.send(err);
     }else{
@@ -274,6 +274,52 @@ router.post('/api/life_command/cancle_like', jwtCheck, (req,res)=>{
   });
 });
 
+//添加收藏
+router.post('/api/command_list/like', jwtCheck, (req,res)=>{
+  let like_command_list = [];
+
+  //通过模型去查找数据库
+  models.login.find({_id: req.body.user_id}, (err,data)=>{
+    if (err) {
+      res.send({'status': 1004, 'message': '添加喜欢失败', 'data': err});
+    } else {
+      like_command_list = data[0].like_command_list || '';
+      name = data[0].name;
+      models.login.updateOne({name: name}, { $set: {"like_command_list": like_command_list + ',' + req.body.command_list_id || ''}}, (err,data)=>{
+      if (err) {
+        res.send({'status': 1003, 'message': '添加喜欢失败', 'data': err});
+      } else {
+          res.send({'status': 1000, 'message': '添加喜欢成功', data:data});
+      }
+      });
+    }
+  });
+});
+
+//取消收藏
+router.post('/api/command_list/cancle_like', jwtCheck, (req,res)=>{
+  let like_command_list = [];
+
+  //通过模型去查找数据库
+  models.login.find({_id: req.body.user_id}, (err,data)=>{
+    if (err) {
+      res.send({'status': 1004, 'message': '取消喜欢失败', 'data': err});
+    } else {
+      like_command_list = data[0].like_command_list || '';
+      const tempArr = like_command_list.split(',').filter(item => item !== req.body.command_list_id);
+      const tempStr = tempArr.join(',')
+      name = data[0].name;
+      models.login.updateOne({name: name}, { $set: {"like_command_list": tempStr}}, (err,data)=>{
+      if (err) {
+        res.send({'status': 1003, 'message': '取消喜欢失败', 'data': err});
+      } else {
+          res.send({'status': 1000, 'message': '取消喜欢成功', data:data});
+      }
+      });
+    }
+  });
+});
+
 //获取我的喜欢的command列表数据
 router.get('/api/like_command_list', (req,res)=>{
 
@@ -288,6 +334,21 @@ router.get('/api/like_command_list', (req,res)=>{
   
 });
 
+//获取我的喜欢的command列表数据
+router.post('/api/like_command_list_2', (req,res)=>{
+  //通过模型去查找数据库
+  const arr = req.body.arr.filter((item) => {
+    return item !== '';
+  })
+  models.command_list.find({'_id': {$in:arr}}, (err,data)=>{
+    if(err){
+      res.send(err);
+    }else{
+      res.send({code: '200', status: 'success', data: data});
+    }
+  });
+  
+});
 //获取我的喜欢的command列表数据
 router.post('/api/delete/my_command', (req,res)=>{
 

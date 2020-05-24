@@ -19,6 +19,7 @@ const loginSchema = mongoose.Schema({
   img_url: String,
   like_command: String,
   not_like_command: String,
+  like_command_list: String,
 });
 
 const commandListSchema = mongoose.Schema({
