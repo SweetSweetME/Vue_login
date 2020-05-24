@@ -171,13 +171,13 @@ router.get('/api/command_list', (req,res)=>{
 // 上传图片接口
 router.post('/api/base/singleFile', upload.single('file'), function (req, res, next) {
   if(req.body.fileLocation) {
-    const newName = req.file.path.replace(/\/tmp/, '\/' + req.body.fileLocation) + path.parse(req.file.originalname).ext
+    const newName = req.file.path.replace(/\\tmp/, '\\' + req.body.fileLocation) + path.parse(req.file.originalname).ext
     
     fs.rename(req.file.path, newName, err => {
       if (err) {
         res.send({ message: err.message })
       } else {
-        let fileName = newName.split('\/').pop()
+        let fileName = newName.split('\\').pop()
         res.send({ path: `${req.body.fileLocation}/${fileName}` })
       }
     })
