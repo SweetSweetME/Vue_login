@@ -10,7 +10,7 @@
     "build": "node build/build.js"
   },
   "dependencies": {
-    "axios": "^0.19.0",
+    "axios": "^0.21.1",
     "bcrypt": "^4.0.1",
     "jsonwebtoken": "^8.5.1",
     "mongoose": "^5.5.13",
